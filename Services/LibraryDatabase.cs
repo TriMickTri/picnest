@@ -69,6 +69,30 @@ public sealed class LibraryDatabase
         return results;
     }
 
+    /// <summary>Removes a folder from PicNest's catalog. Source files are never touched.</summary>
+    public async Task<int> RemoveRootAsync(string rootPath)
+    {
+        await using var db = new SqliteConnection(_connectionString);
+        await db.OpenAsync();
+        using var transaction = db.BeginTransaction();
+        var rootPrefix = (Path.EndsInDirectorySeparator(rootPath) ? rootPath : rootPath + Path.DirectorySeparatorChar) + "%";
+
+        var photos = db.CreateCommand();
+        photos.Transaction = transaction;
+        photos.CommandText = "DELETE FROM Photos WHERE FolderPath=$root OR FolderPath LIKE $prefix;";
+        photos.Parameters.AddWithValue("$root", rootPath);
+        photos.Parameters.AddWithValue("$prefix", rootPrefix);
+        var removedPhotos = await photos.ExecuteNonQueryAsync();
+
+        var root = db.CreateCommand();
+        root.Transaction = transaction;
+        root.CommandText = "DELETE FROM LibraryRoots WHERE Path=$root;";
+        root.Parameters.AddWithValue("$root", rootPath);
+        await root.ExecuteNonQueryAsync();
+        transaction.Commit();
+        return removedPhotos;
+    }
+
     public async Task<IReadOnlyList<FolderSummary>> GetFolderSummariesAsync()
     {
         await using var db = new SqliteConnection(_connectionString);
@@ -108,20 +132,52 @@ public sealed class LibraryDatabase
 
     public async Task UpsertAsync(PhotoRecord photo)
     {
+        await UpsertBatchAsync([photo]);
+    }
+
+    /// <summary>
+    /// Adds or updates a group of catalog records in one SQLite transaction. Image files and
+    /// thumbnails are deliberately kept out of the database; this is metadata only.
+    /// </summary>
+    public async Task UpsertBatchAsync(IReadOnlyList<PhotoRecord> photos, CancellationToken cancellationToken = default)
+    {
+        if (photos.Count == 0) return;
+
         await using var db = new SqliteConnection(_connectionString);
-        await db.OpenAsync();
+        await db.OpenAsync(cancellationToken);
+        await using var transaction = (SqliteTransaction)await db.BeginTransactionAsync(cancellationToken);
         var cmd = db.CreateCommand();
+        cmd.Transaction = transaction;
         cmd.CommandText = """
             INSERT INTO Photos(Path, FolderPath, DateTaken, Hash, Width, Height, ThumbnailPath, IsFavorite)
             VALUES($path,$folder,$date,$hash,$width,$height,$thumb,$favorite)
             ON CONFLICT(Path) DO UPDATE SET FolderPath=excluded.FolderPath, DateTaken=excluded.DateTaken,
               Hash=excluded.Hash, Width=excluded.Width, Height=excluded.Height, ThumbnailPath=excluded.ThumbnailPath;
             """;
-        cmd.Parameters.AddWithValue("$path", photo.Path); cmd.Parameters.AddWithValue("$folder", photo.FolderPath);
-        cmd.Parameters.AddWithValue("$date", photo.DateTaken.ToUniversalTime().ToString("O")); cmd.Parameters.AddWithValue("$hash", photo.Hash);
-        cmd.Parameters.AddWithValue("$width", photo.Width); cmd.Parameters.AddWithValue("$height", photo.Height);
-        cmd.Parameters.AddWithValue("$thumb", photo.ThumbnailPath); cmd.Parameters.AddWithValue("$favorite", photo.IsFavorite ? 1 : 0);
-        await cmd.ExecuteNonQueryAsync();
+        var path = cmd.Parameters.Add("$path", SqliteType.Text);
+        var folder = cmd.Parameters.Add("$folder", SqliteType.Text);
+        var date = cmd.Parameters.Add("$date", SqliteType.Text);
+        var hash = cmd.Parameters.Add("$hash", SqliteType.Text);
+        var width = cmd.Parameters.Add("$width", SqliteType.Integer);
+        var height = cmd.Parameters.Add("$height", SqliteType.Integer);
+        var thumbnail = cmd.Parameters.Add("$thumb", SqliteType.Text);
+        var favorite = cmd.Parameters.Add("$favorite", SqliteType.Integer);
+
+        foreach (var photo in photos)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            path.Value = photo.Path;
+            folder.Value = photo.FolderPath;
+            date.Value = photo.DateTaken.ToUniversalTime().ToString("O");
+            hash.Value = photo.Hash;
+            width.Value = photo.Width;
+            height.Value = photo.Height;
+            thumbnail.Value = photo.ThumbnailPath;
+            favorite.Value = photo.IsFavorite ? 1 : 0;
+            await cmd.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<PhotoRecord>> SearchAsync(string query = "", string? folderPath = null)

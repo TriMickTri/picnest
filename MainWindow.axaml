@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:PicNest.ViewModels"
-        xmlns:models="using:PicNest.Models"
+        xmlns:controls="using:PicNest.Controls"
         x:Class="PicNest.MainWindow"
         Width="1360"
         Height="860"
@@ -39,13 +39,19 @@
             BorderThickness="0,0,0,1" Padding="18,7">
       <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*">
         <!-- A regular Button supplies input/accessibility; this inner Border owns its visuals. -->
-        <Button Classes="brand-button" Click="ImportFolder" Padding="0" BorderThickness="0">
+        <Button Classes="brand-button" Click="ManageFolders" Padding="0" BorderThickness="0">
           <Border Background="#167397" BorderBrush="#0F6382" BorderThickness="1"
                   CornerRadius="4" Padding="16,5">
-            <TextBlock Text="▣  Import folder" Foreground="White" FontWeight="SemiBold" />
+            <TextBlock Text="▣  Manage folders" Foreground="White" FontWeight="SemiBold" />
           </Border>
         </Button>
-        <Button Grid.Column="1" Click="RefreshFolders" Content="↻ Refresh folders" Margin="8,0" />
+        <Button Grid.Column="1" Classes="brand-button" Click="RefreshFolders"
+                Margin="8,0" Padding="0" BorderThickness="0">
+          <Border Background="White" BorderBrush="#5D98AF" BorderThickness="1"
+                  CornerRadius="4" Padding="12,5">
+            <TextBlock Text="↻  Refresh folders" Foreground="#0F6382" FontWeight="SemiBold" />
+          </Border>
+        </Button>
         <Button Grid.Column="2" Content="＋ Album" Margin="0,0,8,0" />
         <Button Grid.Column="3" Content="▦" />
         <TextBox Grid.Column="4" Name="SearchBox" Watermark="Search filenames and captions"
@@ -89,6 +95,9 @@
         </ScrollViewer>
       </Border>
 
+      <!-- The original items/WrapPanel view is intentionally kept as a comment while the
+           virtualized renderer takes over below. -->
+      <!--
       <ScrollViewer Grid.Column="1">
         <ItemsControl ItemsSource="{Binding Groups}">
           <ItemsControl.ItemTemplate>
@@ -109,12 +118,12 @@
                     </ItemsPanelTemplate>
                   </ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
-                    <DataTemplate DataType="models:PhotoRecord">
+                    <DataTemplate DataType="vm:PhotoTile">
                       <StackPanel Margin="0,0,16,15">
                         <Border Height="145" Background="#DEE6E7" CornerRadius="3" ClipToBounds="True">
-                          <Image Source="{Binding ThumbnailPath}" Stretch="UniformToFill" />
+                          <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" />
                         </Border>
-                        <TextBlock Text="{Binding Path}" FontSize="11" TextTrimming="CharacterEllipsis"
+                        <TextBlock Text="{Binding DisplayName}" FontSize="11" TextTrimming="CharacterEllipsis"
                                    Margin="0,6,0,0" />
                       </StackPanel>
                     </DataTemplate>
@@ -124,6 +133,10 @@
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
+      </ScrollViewer>
+      -->
+      <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Disabled">
+        <controls:VirtualizingPhotoTimeline ItemsSource="{Binding Groups}" />
       </ScrollViewer>
     </Grid>
 
