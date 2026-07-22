@@ -1,0 +1,54 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="PicNest.PhotoViewerWindow"
+        Width="1280"
+        Height="860"
+        MinWidth="720"
+        MinHeight="520"
+        WindowStartupLocation="CenterOwner"
+        Background="#1B2225">
+  <Grid RowDefinitions="64,*,34">
+    <Border Background="#26333A" Padding="20,0">
+      <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+        <StackPanel Spacing="2">
+          <TextBlock Name="PhotoName" Foreground="White" FontSize="16" FontWeight="SemiBold"
+                     TextTrimming="CharacterEllipsis" />
+          <TextBlock Name="PhotoDetails" Foreground="#B9C6C9" FontSize="11" />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+          <Button Name="PreviousButton" Click="PreviousPhoto" Content="Previous" />
+          <Button Name="NextButton" Click="NextPhoto" Content="Next" />
+          <Border Background="#1B2225" CornerRadius="3" Padding="9,5">
+            <TextBlock Name="PositionText" Foreground="#D9E2E3" FontSize="11" />
+          </Border>
+          <Button Click="ZoomOut" Content="-" Width="32" />
+          <Border Background="#1B2225" CornerRadius="3" Padding="9,5">
+            <TextBlock Name="ZoomText" Foreground="#D9E2E3" FontSize="11" />
+          </Border>
+          <Button Click="ZoomIn" Content="+" Width="32" />
+          <Button Click="ResetView" Content="Reset view" />
+          <Button Click="CloseViewer" Content="Close" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Border Grid.Row="1" Background="#111719">
+      <ScrollViewer Name="ImageScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                    SizeChanged="ViewerViewportChanged">
+        <Grid Name="ImageHost" Background="#111719">
+          <!-- This is the original image, not the PicNest thumbnail cache. -->
+          <Image Name="PhotoImage" Stretch="Fill" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          <Border Name="LoadError" IsVisible="False" Background="#26333A" CornerRadius="5"
+                  Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <TextBlock Name="LoadErrorText" Foreground="White" TextWrapping="Wrap" MaxWidth="520" />
+          </Border>
+        </Grid>
+      </ScrollViewer>
+    </Border>
+
+    <Border Grid.Row="2" Background="#26333A" Padding="20,0">
+      <TextBlock Name="SourcePath" Foreground="#B9C6C9" FontSize="11"
+                 VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+    </Border>
+  </Grid>
+</Window>

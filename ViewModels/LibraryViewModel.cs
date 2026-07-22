@@ -60,7 +60,7 @@ public sealed class LibraryViewModel : IDisposable
     {
         await DiagnosticLog.InformationAsync($"Removing imported folder from PicNest catalog: {root.Path}");
         var removedPhotos = await _database.RemoveRootAsync(root.Path);
-        if (string.Equals(_selectedFolderPath, root.Path, StringComparison.OrdinalIgnoreCase)) _selectedFolderPath = null;
+        if (_selectedFolderPath is not null && IsWithin(_selectedFolderPath, root.Path)) _selectedFolderPath = null;
         await RefreshImportedFoldersAsync();
         await RefreshFolderTreeAsync();
         await RefreshAsync(_searchText);
@@ -77,20 +77,29 @@ public sealed class LibraryViewModel : IDisposable
         if (roots.Count == 0)
             await DiagnosticLog.WarningAsync("Refresh folders found no saved library roots. Import a folder first.");
         var indexed = 0;
+        var removedRoots = 0;
+        var removedPhotos = 0;
         foreach (var root in roots)
         {
             if (!Directory.Exists(root.Path))
             {
-                await DiagnosticLog.WarningAsync($"Saved library root is unavailable: {root.Path}");
+                await DiagnosticLog.WarningAsync($"Saved library root is gone and will be removed from the PicNest catalog: {root.Path}");
+                removedPhotos += await _database.RemoveRootAsync(root.Path);
+                removedRoots++;
+                if (_selectedFolderPath is not null && IsWithin(_selectedFolderPath, root.Path)) _selectedFolderPath = null;
                 continue;
             }
             progress?.Report($"Scanning {root.DisplayName}…");
             indexed += await _indexer.IndexFolderAsync(root.Path, progress);
             await RemoveMissingPhotosAsync(root.Path);
         }
+        await RefreshImportedFoldersAsync();
         await RefreshFolderTreeAsync();
         await RefreshAsync(_searchText);
-        Status = $"Folders refreshed. {indexed:n0} photos checked.";
+        _watcher.Watch((await _database.GetRootsAsync()).Select(root => root.Path));
+        Status = removedRoots == 0
+            ? $"Folders refreshed. {indexed:n0} photos checked."
+            : $"Folders refreshed. {indexed:n0} photos checked; removed {removedRoots:n0} missing folder(s) and {removedPhotos:n0} catalog photo(s).";
     }
 
     public async Task SelectFolderAsync(string? folderPath)
@@ -108,6 +117,10 @@ public sealed class LibraryViewModel : IDisposable
         foreach (var group in records.GroupBy(p => p.DateTaken.Date).OrderByDescending(group => group.Key))
             Groups.Add(new DateGroup(group.Key, new ObservableCollection<PhotoTile>(group.Select(photo => new PhotoTile(photo)))));
     }
+
+    /// <summary>Returns the current timeline order for viewer navigation.</summary>
+    public IReadOnlyList<PhotoRecord> GetVisiblePhotos() =>
+        Groups.SelectMany(group => group.Photos).Select(tile => tile.Photo).ToArray();
 
     public async Task RefreshFolderTreeAsync()
     {

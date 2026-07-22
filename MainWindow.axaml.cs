@@ -1,6 +1,10 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.Threading;
+using PicNest.Controls;
+using PicNest.Models;
 using PicNest.ViewModels;
 
 namespace PicNest;
@@ -13,6 +17,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = _viewModel;
+        UpdateThumbnailButtonState();
         Opened += InitializeLibrary;
         Closed += (_, _) => _viewModel.Dispose();
         _viewModel.LibraryChanged += (_, _) => Dispatcher.UIThread.Post(async () =>
@@ -65,5 +70,44 @@ public partial class MainWindow : Window
         if (FolderTree.SelectedItem is not FolderNode folder) return;
         await _viewModel.SelectFolderAsync(folder.Path);
         StatusText.Text = $"Showing {folder.DisplayName}.";
+    }
+
+    private async void OpenPhotoViewer(object? sender, PhotoRecord photo)
+    {
+        var viewer = new PhotoViewerWindow(_viewModel.GetVisiblePhotos(), photo);
+        await viewer.ShowDialog(this);
+    }
+
+    private void SetSmallThumbnails(object? sender, RoutedEventArgs e) =>
+        SetThumbnailSize(ThumbnailDisplaySize.Small);
+
+    private void SetMediumThumbnails(object? sender, RoutedEventArgs e) =>
+        SetThumbnailSize(ThumbnailDisplaySize.Medium);
+
+    private void SetLargeThumbnails(object? sender, RoutedEventArgs e) =>
+        SetThumbnailSize(ThumbnailDisplaySize.Large);
+
+    private void SetThumbnailSize(ThumbnailDisplaySize size)
+    {
+        PhotoTimeline.ThumbnailSize = size;
+        UpdateThumbnailButtonState();
+        StatusText.Text = $"Thumbnail size set to {size.ToString().ToLowerInvariant()}.";
+    }
+
+    private void UpdateThumbnailButtonState()
+    {
+        SetThumbnailButtonState(SmallThumbnailBorder, SmallThumbnailText,
+            PhotoTimeline.ThumbnailSize == ThumbnailDisplaySize.Small);
+        SetThumbnailButtonState(MediumThumbnailBorder, MediumThumbnailText,
+            PhotoTimeline.ThumbnailSize == ThumbnailDisplaySize.Medium);
+        SetThumbnailButtonState(LargeThumbnailBorder, LargeThumbnailText,
+            PhotoTimeline.ThumbnailSize == ThumbnailDisplaySize.Large);
+    }
+
+    private static void SetThumbnailButtonState(Border border, TextBlock text, bool isSelected)
+    {
+        border.Background = new SolidColorBrush(Color.Parse(isSelected ? "#167397" : "#FFFFFF"));
+        border.BorderBrush = new SolidColorBrush(Color.Parse(isSelected ? "#0F6382" : "#5D98AF"));
+        text.Foreground = new SolidColorBrush(Color.Parse(isSelected ? "#FFFFFF" : "#0F6382"));
     }
 }

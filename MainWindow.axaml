@@ -53,7 +53,29 @@
           </Border>
         </Button>
         <Button Grid.Column="2" Content="＋ Album" Margin="0,0,8,0" />
-        <Button Grid.Column="3" Content="▦" />
+        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="3">
+          <Button Classes="brand-button" Click="SetSmallThumbnails" ToolTip.Tip="Small thumbnails"
+                  Padding="0" BorderThickness="0">
+            <Border Name="SmallThumbnailBorder" Background="White" BorderBrush="#5D98AF" BorderThickness="1"
+                    CornerRadius="4" Padding="10,5">
+              <TextBlock Name="SmallThumbnailText" Text="Small" Foreground="#0F6382" FontWeight="SemiBold" />
+            </Border>
+          </Button>
+          <Button Classes="brand-button" Click="SetMediumThumbnails" ToolTip.Tip="Medium thumbnails"
+                  Padding="0" BorderThickness="0">
+            <Border Name="MediumThumbnailBorder" Background="White" BorderBrush="#5D98AF" BorderThickness="1"
+                    CornerRadius="4" Padding="10,5">
+              <TextBlock Name="MediumThumbnailText" Text="Medium" Foreground="#0F6382" FontWeight="SemiBold" />
+            </Border>
+          </Button>
+          <Button Classes="brand-button" Click="SetLargeThumbnails" ToolTip.Tip="Large thumbnails"
+                  Padding="0" BorderThickness="0">
+            <Border Name="LargeThumbnailBorder" Background="#167397" BorderBrush="#0F6382" BorderThickness="1"
+                    CornerRadius="4" Padding="10,5">
+              <TextBlock Name="LargeThumbnailText" Text="Large" Foreground="White" FontWeight="SemiBold" />
+            </Border>
+          </Button>
+        </StackPanel>
         <TextBox Grid.Column="4" Name="SearchBox" Watermark="Search filenames and captions"
                  HorizontalAlignment="Right" Width="360" Height="30" TextChanged="SearchChanged" />
       </Grid>
@@ -136,7 +158,8 @@
       </ScrollViewer>
       -->
       <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Disabled">
-        <controls:VirtualizingPhotoTimeline ItemsSource="{Binding Groups}" />
+        <controls:VirtualizingPhotoTimeline Name="PhotoTimeline" ItemsSource="{Binding Groups}"
+                                            PhotoDoubleClicked="OpenPhotoViewer" />
       </ScrollViewer>
     </Grid>
 

@@ -2,12 +2,21 @@ using System.Collections.Specialized;
 using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.VisualTree;
+using PicNest.Models;
 using PicNest.ViewModels;
 
 namespace PicNest.Controls;
+
+public enum ThumbnailDisplaySize
+{
+    Large,
+    Medium,
+    Small
+}
 
 /// <summary>
 /// Draws only the portion of the photo timeline that is in (or just beside) the viewport.
@@ -19,10 +28,6 @@ public sealed class VirtualizingPhotoTimeline : Control
     private const double SidePadding = 28;
     private const double TopPadding = 22;
     private const double HeaderHeight = 58;
-    private const double TileWidth = 134;
-    private const double ThumbnailHeight = 145;
-    private const double ColumnGap = 16;
-    private const double RowHeight = 181;
     private const double GroupGap = 16;
     private const int ThumbnailCacheLimit = 160;
 
@@ -33,6 +38,8 @@ public sealed class VirtualizingPhotoTimeline : Control
 
     public static readonly StyledProperty<IList<DateGroup>?> ItemsSourceProperty =
         AvaloniaProperty.Register<VirtualizingPhotoTimeline, IList<DateGroup>?>(nameof(ItemsSource));
+    public static readonly StyledProperty<ThumbnailDisplaySize> ThumbnailSizeProperty =
+        AvaloniaProperty.Register<VirtualizingPhotoTimeline, ThumbnailDisplaySize>(nameof(ThumbnailSize), ThumbnailDisplaySize.Large);
 
     private readonly List<GroupLayout> _layouts = [];
     private readonly Dictionary<string, CacheItem> _thumbnailCache = new(StringComparer.OrdinalIgnoreCase);
@@ -49,14 +56,32 @@ public sealed class VirtualizingPhotoTimeline : Control
         set => SetValue(ItemsSourceProperty, value);
     }
 
+    /// <summary>Changes the physical grid metrics without rebuilding the photo catalog.</summary>
+    public ThumbnailDisplaySize ThumbnailSize
+    {
+        get => GetValue(ThumbnailSizeProperty);
+        set => SetValue(ThumbnailSizeProperty, value);
+    }
+
+    /// <summary>Raised when the user double-clicks a visible photo thumbnail.</summary>
+    public event EventHandler<PhotoRecord>? PhotoDoubleClicked;
+
     public VirtualizingPhotoTimeline()
     {
         ClipToBounds = true;
+        PointerPressed += TimelinePointerPressed;
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
+        if (change.Property == ThumbnailSizeProperty)
+        {
+            _layoutWidth = -1;
+            InvalidateMeasure();
+            InvalidateVisual();
+            return;
+        }
         if (change.Property != ItemsSourceProperty) return;
 
         if (_collectionNotifier is not null) _collectionNotifier.CollectionChanged -= ItemsChanged;
@@ -163,10 +188,10 @@ public sealed class VirtualizingPhotoTimeline : Control
             }
         }
 
-        var filename = Shorten(Path.GetFileName(tile.Photo.Path), 21);
+        var filename = Shorten(Path.GetFileName(tile.Photo.Path), MaximumLabelLength);
         var label = new FormattedText(filename, CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
-            TextTypeface, 11, TitleBrush);
-        context.DrawText(label, new Point(x, y + ThumbnailHeight + 6));
+            TextTypeface, LabelFontSize, TitleBrush);
+        context.DrawText(label, new Point(x, y + ThumbnailHeight + LabelOffset));
     }
 
     private Bitmap? GetThumbnail(string thumbnailPath)
@@ -220,6 +245,36 @@ public sealed class VirtualizingPhotoTimeline : Control
 
     private void ScrollViewerScrolled(object? sender, ScrollChangedEventArgs e) => InvalidateVisual();
 
+    private void TimelinePointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.ClickCount < 2 || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        if (!TryGetPhotoAt(e.GetPosition(this), out var photo)) return;
+        PhotoDoubleClicked?.Invoke(this, photo);
+        e.Handled = true;
+    }
+
+    private bool TryGetPhotoAt(Point point, out PhotoRecord photo)
+    {
+        foreach (var layout in _layouts)
+        {
+            if (point.Y < layout.FirstRowTop || point.Y >= layout.FirstRowTop + (layout.RowCount * RowHeight)) continue;
+            var column = (int)Math.Floor((point.X - SidePadding) / (TileWidth + ColumnGap));
+            if (column < 0 || column >= layout.Columns) continue;
+            var tileLeft = SidePadding + column * (TileWidth + ColumnGap);
+            var row = (int)Math.Floor((point.Y - layout.FirstRowTop) / RowHeight);
+            var tileTop = layout.FirstRowTop + row * RowHeight;
+            if (point.X > tileLeft + TileWidth || point.Y > tileTop + ThumbnailHeight) continue;
+
+            var index = row * layout.Columns + column;
+            if (index >= layout.Group.Photos.Count) continue;
+            photo = layout.Group.Photos[index].Photo;
+            return true;
+        }
+
+        photo = default!;
+        return false;
+    }
+
     private void Touch(CacheItem item)
     {
         _thumbnailLru.Remove(item.Node);
@@ -256,6 +311,55 @@ public sealed class VirtualizingPhotoTimeline : Control
         var height = source.Width / destinationRatio;
         return new Rect(0, (source.Height - height) / 2, source.Width, height);
     }
+
+    private double TileWidth => ThumbnailSize switch
+    {
+        ThumbnailDisplaySize.Small => 74,
+        ThumbnailDisplaySize.Medium => 104,
+        _ => 134
+    };
+
+    private double ThumbnailHeight => ThumbnailSize switch
+    {
+        ThumbnailDisplaySize.Small => 80,
+        ThumbnailDisplaySize.Medium => 112,
+        _ => 145
+    };
+
+    private double ColumnGap => ThumbnailSize switch
+    {
+        ThumbnailDisplaySize.Small => 10,
+        ThumbnailDisplaySize.Medium => 12,
+        _ => 16
+    };
+
+    private double RowHeight => ThumbnailSize switch
+    {
+        ThumbnailDisplaySize.Small => 108,
+        ThumbnailDisplaySize.Medium => 143,
+        _ => 181
+    };
+
+    private double LabelFontSize => ThumbnailSize switch
+    {
+        ThumbnailDisplaySize.Small => 9,
+        ThumbnailDisplaySize.Medium => 10,
+        _ => 11
+    };
+
+    private double LabelOffset => ThumbnailSize switch
+    {
+        ThumbnailDisplaySize.Small => 4,
+        ThumbnailDisplaySize.Medium => 5,
+        _ => 6
+    };
+
+    private int MaximumLabelLength => ThumbnailSize switch
+    {
+        ThumbnailDisplaySize.Small => 12,
+        ThumbnailDisplaySize.Medium => 17,
+        _ => 21
+    };
 
     private static string Shorten(string value, int maximumLength) =>
         value.Length <= maximumLength ? value : value[..Math.Max(1, maximumLength - 1)] + "…";

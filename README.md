@@ -8,7 +8,9 @@ PicNest is a deliberately local-first, folder-first photo library. The catalog i
 - SQLite schema for photos, tags and people
 - SHA-256 source hashing and cache-at-once thumbnails
 - Viewport-virtualized photo timeline with a bounded decoded-thumbnail cache (ready for very large libraries)
+- Small, medium, and large thumbnail layouts
 - SQLite scan writes grouped into 250-photo transactions
+- Double-click any thumbnail to open its original image in a viewer with zoom, reset, and next/previous navigation
 - File-date grouping (EXIF/XMP extraction is the next metadata milestone)
 - Persistent folder roots, hierarchical folder tree, direct folder counts, and click-to-filter timeline
 - **Manage folders** dialog for listing imports, adding another folder, or removing a folder from the PicNest catalog without affecting its original files
