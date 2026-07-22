@@ -1,0 +1,40 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="PicNest.App">
+  <Application.Styles>
+    <FluentTheme />
+
+    <!-- The two blue Picasa-style actions paint their own content so Fluent's
+         pointer-over theme layer cannot replace the visible colour. -->
+    <Style Selector="Button.brand-button">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.brand-button:pointerover">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.brand-button:pressed">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+
+    <Style Selector="TreeView">
+      <Setter Property="Foreground" Value="#26333A" />
+    </Style>
+    <Style Selector="TreeViewItem:pointerover">
+      <Setter Property="Background" Value="#DCEAF0" />
+      <Setter Property="Foreground" Value="#26333A" />
+    </Style>
+    <Style Selector="TreeViewItem:selected">
+      <Setter Property="Background" Value="#C6E0EA" />
+      <Setter Property="Foreground" Value="#26333A" />
+    </Style>
+    <Style Selector="TextBlock.muted">
+      <Setter Property="Foreground" Value="#738287" />
+    </Style>
+  </Application.Styles>
+</Application>

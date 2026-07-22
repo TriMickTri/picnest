@@ -1,0 +1,143 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PicNest.ViewModels"
+        xmlns:models="using:PicNest.Models"
+        x:Class="PicNest.MainWindow"
+        Width="1360"
+        Height="860"
+        MinWidth="900"
+        MinHeight="600"
+        Title="PicNest">
+  <Grid RowDefinitions="58,48,*,56" Background="#F8FAFA">
+    <Border Grid.Row="0"
+            Background="White"
+            BorderBrush="#D5DEDF"
+            BorderThickness="0,0,0,1"
+            Padding="20,0">
+      <Grid ColumnDefinitions="310,*,Auto" VerticalAlignment="Center">
+        <StackPanel Orientation="Horizontal" Spacing="9">
+          <Border Width="25" Height="25" CornerRadius="4" Background="#167397">
+            <TextBlock Text="▦" Foreground="White" FontSize="18"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <TextBlock Text="PicNest" FontSize="22" FontWeight="Light" />
+          <TextBlock Text="Your private photo library" Classes="muted"
+                     VerticalAlignment="Center" Margin="8,0,0,0" />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="28" VerticalAlignment="Center">
+          <TextBlock Text="Library" Foreground="#167397" FontWeight="SemiBold" />
+          <TextBlock Text="Albums" />
+          <TextBlock Text="People" />
+          <TextBlock Text="Places" />
+        </StackPanel>
+        <TextBlock Grid.Column="2" Text="Local only · nothing is uploaded"
+                   Classes="muted" VerticalAlignment="Center" />
+      </Grid>
+    </Border>
+
+    <Border Grid.Row="1" Background="#EDF2F3" BorderBrush="#D5DEDF"
+            BorderThickness="0,0,0,1" Padding="18,7">
+      <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*">
+        <!-- A regular Button supplies input/accessibility; this inner Border owns its visuals. -->
+        <Button Classes="brand-button" Click="ImportFolder" Padding="0" BorderThickness="0">
+          <Border Background="#167397" BorderBrush="#0F6382" BorderThickness="1"
+                  CornerRadius="4" Padding="16,5">
+            <TextBlock Text="▣  Import folder" Foreground="White" FontWeight="SemiBold" />
+          </Border>
+        </Button>
+        <Button Grid.Column="1" Click="RefreshFolders" Content="↻ Refresh folders" Margin="8,0" />
+        <Button Grid.Column="2" Content="＋ Album" Margin="0,0,8,0" />
+        <Button Grid.Column="3" Content="▦" />
+        <TextBox Grid.Column="4" Name="SearchBox" Watermark="Search filenames and captions"
+                 HorizontalAlignment="Right" Width="360" Height="30" TextChanged="SearchChanged" />
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="2" ColumnDefinitions="270,*">
+      <Border Background="#F1F4F4" BorderBrush="#D5DEDF" BorderThickness="0,0,1,0">
+        <ScrollViewer>
+          <StackPanel>
+            <TextBlock Text="LIBRARY" Classes="muted" FontSize="11" FontWeight="Bold"
+                       Margin="18,18,0,7" />
+            <Button Name="AllPhotosButton" Classes="brand-button" Click="ShowAllPhotos"
+                    HorizontalContentAlignment="Stretch" Padding="0" BorderThickness="0">
+              <Border Background="#167397" Padding="17,7">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="▾  All photos" Foreground="White" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding Groups.Count}" Grid.Column="1" Foreground="White" />
+                </Grid>
+              </Border>
+            </Button>
+            <TextBlock Text="★  Favorites" Margin="20,10" />
+
+            <TextBlock Text="FOLDERS" Classes="muted" FontSize="11" FontWeight="Bold"
+                       Margin="18,18,0,7" />
+            <TreeView Name="FolderTree" ItemsSource="{Binding Folders}"
+                      SelectionChanged="FolderSelected" Margin="10,0,8,16">
+              <TreeView.ItemTemplate>
+                <TreeDataTemplate DataType="vm:FolderNode" ItemsSource="{Binding Children}">
+                  <Grid ColumnDefinitions="*,Auto" Margin="3,3">
+                    <TextBlock Text="{Binding DisplayName}" Foreground="#26333A"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Count}" Grid.Column="1" Foreground="#738287"
+                               Margin="9,0,0,0" />
+                  </Grid>
+                </TreeDataTemplate>
+              </TreeView.ItemTemplate>
+            </TreeView>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+
+      <ScrollViewer Grid.Column="1">
+        <ItemsControl ItemsSource="{Binding Groups}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="vm:DateGroup">
+              <StackPanel Margin="28,22,28,12">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel>
+                    <TextBlock Text="{Binding Title}" FontSize="19" />
+                    <TextBlock Text="{Binding Photos.Count, StringFormat={}{0} photos}"
+                               Classes="muted" FontSize="12" />
+                  </StackPanel>
+                  <Button Grid.Column="1" Content="▶ Slideshow" VerticalAlignment="Center" />
+                </Grid>
+                <ItemsControl ItemsSource="{Binding Photos}" Margin="0,16,0,0">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel ItemWidth="150" ItemHeight="186" />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="models:PhotoRecord">
+                      <StackPanel Margin="0,0,16,15">
+                        <Border Height="145" Background="#DEE6E7" CornerRadius="3" ClipToBounds="True">
+                          <Image Source="{Binding ThumbnailPath}" Stretch="UniformToFill" />
+                        </Border>
+                        <TextBlock Text="{Binding Path}" FontSize="11" TextTrimming="CharacterEllipsis"
+                                   Margin="0,6,0,0" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </Grid>
+
+    <Border Grid.Row="3" Background="White" BorderBrush="#D5DEDF"
+            BorderThickness="0,1,0,0" Padding="20,0">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Name="StatusText" Text="Choose a folder to build your private library."
+                   VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="24" VerticalAlignment="Center">
+          <TextBlock Text="✉ Share" />
+          <TextBlock Text="⎙ Print" />
+          <TextBlock Text="⇧ Export" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>
