@@ -1,0 +1,26 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="PicNest.ConfirmDeleteWindow"
+        Width="470"
+        Height="250"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Title="Move items to Recycle Bin">
+  <Grid RowDefinitions="*,Auto" Background="#F8FAFA">
+    <StackPanel Margin="28,24" Spacing="12">
+      <TextBlock Text="Move selected items to the Recycle Bin?" FontSize="19" FontWeight="SemiBold"
+                 Foreground="#26333A" />
+      <TextBlock Name="MessageText" Classes="muted" FontSize="13" TextWrapping="Wrap" />
+      <Border Background="#FFF4D6" BorderBrush="#F0D38A" BorderThickness="1" CornerRadius="4" Padding="12">
+        <TextBlock Text="Your original files are not permanently deleted. You can restore them from the Windows Recycle Bin."
+                   Foreground="#695417" FontSize="12" TextWrapping="Wrap" />
+      </Border>
+    </StackPanel>
+    <Border Grid.Row="1" Background="White" BorderBrush="#D5DEDF" BorderThickness="0,1,0,0" Padding="24,14">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <Button Click="CancelDelete" Content="Cancel" Padding="14,6" />
+        <Button Click="ConfirmDelete" Content="Move to Recycle Bin" Foreground="#A33B37" Padding="14,6" />
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>

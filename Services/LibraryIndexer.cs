@@ -77,6 +77,25 @@ public sealed class LibraryIndexer(LibraryDatabase database)
         await database.UpsertAsync(await CreateMediaRecordAsync(path, cancellationToken));
     }
 
+    /// <summary>
+    /// Builds a separate, derived cache file for a user-selected image orientation. The source
+    /// photo is decoded and read only; PicNest never writes it back to disk.
+    /// </summary>
+    public static async Task<string> CreateRotatedThumbnailAsync(PhotoRecord photo, int rotationDegrees,
+        CancellationToken cancellationToken = default)
+    {
+        if (photo.MediaKind != MediaKind.Image || !IsSupportedImage(photo.Path))
+            throw new InvalidOperationException("Only still images can be rotated.");
+
+        var rotation = NormalizeRotation(rotationDegrees);
+        var suffix = rotation == 0 ? "" : $"-r{rotation}";
+        var thumbnailPath = Path.Combine(LibraryPaths.Thumbnails, $"{photo.Hash}{suffix}.jpg");
+        if (File.Exists(thumbnailPath)) return thumbnailPath;
+
+        await Task.Run(() => CreateRotatedImageThumbnail(photo.Path, thumbnailPath, rotation, cancellationToken), cancellationToken);
+        return thumbnailPath;
+    }
+
     private static async Task<PhotoRecord> CreateMediaRecordAsync(string path, CancellationToken cancellationToken) =>
         IsSupportedVideo(path)
             ? await CreateVideoRecordAsync(path, cancellationToken)
@@ -101,6 +120,48 @@ public sealed class LibraryIndexer(LibraryDatabase database)
         return new PhotoRecord(0, path, Path.GetDirectoryName(path)!, date, hash, source.Width, source.Height, thumbPath, false, MediaKind.Image);
     }
 
+    private static void CreateRotatedImageThumbnail(string sourcePath, string thumbnailPath, int rotationDegrees,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        using var source = SKBitmap.Decode(sourcePath) ?? throw new InvalidDataException($"PicNest could not decode {sourcePath}.");
+        var isSideways = rotationDegrees is 90 or 270;
+        var displayWidth = isSideways ? source.Height : source.Width;
+        var displayHeight = isSideways ? source.Width : source.Height;
+        using var surface = SKSurface.Create(new SKImageInfo(displayWidth, displayHeight))
+            ?? throw new InvalidDataException($"PicNest could not rotate {sourcePath}.");
+
+        var canvas = surface.Canvas;
+        switch (rotationDegrees)
+        {
+            case 90:
+                canvas.Translate(displayWidth, 0);
+                canvas.RotateDegrees(90);
+                break;
+            case 180:
+                canvas.Translate(displayWidth, displayHeight);
+                canvas.RotateDegrees(180);
+                break;
+            case 270:
+                canvas.Translate(0, displayHeight);
+                canvas.RotateDegrees(270);
+                break;
+        }
+        canvas.DrawBitmap(source, 0, 0);
+
+        using var rotatedImage = surface.Snapshot();
+        using var rotated = SKBitmap.FromImage(rotatedImage);
+        var scale = Math.Min(1d, 360d / Math.Max(rotated.Width, rotated.Height));
+        var size = new SKImageInfo(Math.Max(1, (int)(rotated.Width * scale)), Math.Max(1, (int)(rotated.Height * scale)));
+        using var thumbnail = rotated.Resize(size, new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.None))
+            ?? throw new InvalidDataException($"PicNest could not resize {sourcePath}.");
+        using var encoded = SKImage.FromBitmap(thumbnail).Encode(SKEncodedImageFormat.Jpeg, 85);
+        cancellationToken.ThrowIfCancellationRequested();
+        Directory.CreateDirectory(Path.GetDirectoryName(thumbnailPath)!);
+        using var output = File.Create(thumbnailPath);
+        encoded.SaveTo(output);
+    }
+
     private static async Task<PhotoRecord> CreateVideoRecordAsync(string path, CancellationToken cancellationToken)
     {
         var hash = await HashFileAsync(path, cancellationToken);
@@ -120,6 +181,12 @@ public sealed class LibraryIndexer(LibraryDatabase database)
         }
         var date = File.GetLastWriteTime(path);
         return new PhotoRecord(0, path, Path.GetDirectoryName(path)!, date, hash, 1920, 1080, thumbPath, false, MediaKind.Video);
+    }
+
+    private static int NormalizeRotation(int rotationDegrees)
+    {
+        var normalized = rotationDegrees % 360;
+        return normalized < 0 ? normalized + 360 : normalized;
     }
 
     /// <summary>Captures an early frame with an off-screen LibVLC buffer, never a visible VLC video window.</summary>

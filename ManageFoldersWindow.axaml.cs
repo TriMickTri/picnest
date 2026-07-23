@@ -19,6 +19,7 @@ public partial class ManageFoldersWindow : Window
         _library = library;
         InitializeComponent();
         DataContext = _library;
+        UpdateProtectionButton();
     }
 
     private async void AddFolder(object? sender, RoutedEventArgs e)
@@ -51,10 +52,40 @@ public partial class ManageFoldersWindow : Window
         try
         {
             await _library.RemoveImportedFolderAsync(root);
+            UpdateProtectionButton();
             DialogStatus.Text = _library.Status;
         }
         catch (Exception error) { DialogStatus.Text = $"Could not remove folder: {error.Message}"; }
     }
+
+    private void FolderSelected(object? sender, SelectionChangedEventArgs e) => UpdateProtectionButton();
+
+    private async void ToggleProtection(object? sender, RoutedEventArgs e)
+    {
+        if (FolderList.SelectedItem is not LibraryRoot root)
+        {
+            DialogStatus.Text = "Select an imported folder to change its protected state.";
+            return;
+        }
+
+        try
+        {
+            await _library.SetRootProtectionAsync(root, !root.IsProtected);
+            FolderList.SelectedItem = _library.ImportedFolders.FirstOrDefault(item =>
+                string.Equals(item.Path, root.Path, StringComparison.OrdinalIgnoreCase));
+            UpdateProtectionButton();
+            DialogStatus.Text = _library.Status;
+        }
+        catch (Exception error)
+        {
+            DialogStatus.Text = $"Could not change folder protection: {error.Message}";
+        }
+    }
+
+    private void UpdateProtectionButton() =>
+        ToggleProtectionButton.Content = FolderList.SelectedItem is LibraryRoot { IsProtected: true }
+            ? "Remove protection"
+            : "Protect selected";
 
     private void CloseDialog(object? sender, RoutedEventArgs e) => Close();
 }

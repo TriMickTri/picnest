@@ -1,33 +1,38 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:PicNest.ViewModels"
+        xmlns:models="using:PicNest.Models"
         xmlns:controls="using:PicNest.Controls"
         x:Class="PicNest.MainWindow"
         Width="1360"
         Height="860"
         MinWidth="900"
         MinHeight="600"
+        Icon="/Assets/picnest.ico"
         Title="PicNest">
-  <Grid RowDefinitions="58,48,*,56" Background="#F8FAFA">
+  <Grid RowDefinitions="58,48,*,56" Background="{DynamicResource AppPageBackgroundBrush}">
     <Border Grid.Row="0"
-            Background="White"
-            BorderBrush="#D5DEDF"
+            Background="{DynamicResource AppSurfaceBrush}"
+            BorderBrush="{DynamicResource AppBorderBrush}"
             BorderThickness="0,0,0,1"
             Padding="20,0">
       <Grid ColumnDefinitions="310,*,Auto" VerticalAlignment="Center">
         <StackPanel Orientation="Horizontal" Spacing="9">
-          <Border Width="25" Height="25" CornerRadius="4" Background="#167397">
-            <TextBlock Text="▦" Foreground="White" FontSize="18"
-                       HorizontalAlignment="Center" VerticalAlignment="Center" />
-          </Border>
+          <Image Width="27" Height="27"
+                 Source="/Assets/picnest-icon.png"
+                 Stretch="Uniform" />
           <TextBlock Text="PicNest" FontSize="22" FontWeight="Light" />
           <TextBlock Text="Your private photo library" Classes="muted"
                      VerticalAlignment="Center" Margin="8,0,0,0" />
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="28" VerticalAlignment="Center">
           <TextBlock Text="Library" Foreground="#167397" FontWeight="SemiBold" />
-          <TextBlock Text="Albums" />
-          <TextBlock Text="People" />
+          <Button Classes="brand-button" Click="ManageAlbums" Padding="0" BorderThickness="0">
+            <TextBlock Text="Albums" Foreground="{DynamicResource AppTextBrush}" />
+          </Button>
+          <Button Classes="brand-button" Click="ManagePeople" Padding="0" BorderThickness="0">
+            <TextBlock Text="People" Foreground="{DynamicResource AppTextBrush}" />
+          </Button>
           <TextBlock Text="Places" />
         </StackPanel>
         <TextBlock Grid.Column="2" Text="Local only · nothing is uploaded"
@@ -35,7 +40,7 @@
       </Grid>
     </Border>
 
-    <Border Grid.Row="1" Background="#EDF2F3" BorderBrush="#D5DEDF"
+    <Border Grid.Row="1" Background="{DynamicResource AppToolbarBrush}" BorderBrush="{DynamicResource AppBorderBrush}"
             BorderThickness="0,0,0,1" Padding="18,7">
       <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*">
         <!-- A regular Button supplies input/accessibility; this inner Border owns its visuals. -->
@@ -52,7 +57,13 @@
             <TextBlock Text="↻  Refresh folders" Foreground="#0F6382" FontWeight="SemiBold" />
           </Border>
         </Button>
-        <Button Grid.Column="2" Content="＋ Album" Margin="0,0,8,0" />
+        <Button Grid.Column="2" Classes="brand-button" Click="ManageAlbums" Margin="0,0,8,0"
+                Padding="0" BorderThickness="0">
+          <Border Background="{DynamicResource AppRaisedSurfaceBrush}" BorderBrush="#5D98AF" BorderThickness="1"
+                  CornerRadius="4" Padding="12,5">
+            <TextBlock Text="+ Album" Foreground="#0F6382" FontWeight="SemiBold" />
+          </Border>
+        </Button>
         <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="3">
           <Button Classes="brand-button" Click="SetSmallThumbnails" ToolTip.Tip="Small thumbnails"
                   Padding="0" BorderThickness="0">
@@ -76,17 +87,25 @@
             </Border>
           </Button>
         </StackPanel>
+        <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Left" Spacing="8" Margin="12,0,0,0">
+          <Button Classes="brand-button" Click="OpenPreferences" Padding="0" BorderThickness="0">
+            <Border Background="{DynamicResource AppRaisedSurfaceBrush}" BorderBrush="#5D98AF" BorderThickness="1"
+                    CornerRadius="4" Padding="12,5">
+              <TextBlock Text="Preferences" Foreground="#0F6382" FontWeight="SemiBold" />
+            </Border>
+          </Button>
+        </StackPanel>
         <TextBox Grid.Column="4" Name="SearchBox" Watermark="Search filenames and captions"
                  HorizontalAlignment="Right" Width="360" Height="30" TextChanged="SearchChanged" />
       </Grid>
     </Border>
 
-    <Grid Grid.Row="2" ColumnDefinitions="270,*">
-      <Border Background="#F1F4F4" BorderBrush="#D5DEDF" BorderThickness="0,0,1,0">
+    <Grid Grid.Row="2" ColumnDefinitions="286,*">
+      <Border Background="{DynamicResource AppSurfaceBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="0,0,1,0">
         <ScrollViewer>
           <StackPanel>
-            <TextBlock Text="LIBRARY" Classes="muted" FontSize="11" FontWeight="Bold"
-                       Margin="18,18,0,7" />
+            <TextBlock Text="Quick access" Foreground="{DynamicResource AppSubtleTextBrush}" FontSize="12" FontWeight="SemiBold"
+                       Margin="18,16,0,7" />
             <Button Name="AllPhotosButton" Classes="brand-button" Click="ShowAllPhotos"
                     HorizontalContentAlignment="Stretch" Padding="0" BorderThickness="0">
               <Border Background="#167397" Padding="17,7">
@@ -96,19 +115,81 @@
                 </Grid>
               </Border>
             </Button>
-            <TextBlock Text="★  Favorites" Margin="20,10" />
+            <Button Classes="brand-button" Click="ShowFavorites" HorizontalContentAlignment="Stretch"
+                    Padding="0" BorderThickness="0">
+              <Border Padding="17,7">
+                <TextBlock Text="★  Favorites" Foreground="{DynamicResource AppTextBrush}" />
+              </Border>
+            </Button>
 
-            <TextBlock Text="FOLDERS" Classes="muted" FontSize="11" FontWeight="Bold"
-                       Margin="18,18,0,7" />
+            <Button Name="ProtectedFoldersButton" Classes="brand-button" Click="ToggleProtectedFolders"
+                    HorizontalContentAlignment="Stretch" Padding="0" BorderThickness="0">
+              <Border Padding="17,7">
+                <TextBlock Name="ProtectedFoldersText" Text="Protected folders" Foreground="{DynamicResource AppTextBrush}" />
+              </Border>
+            </Button>
+            <Border BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="0,1,0,0" Margin="12,10,12,0" />
+            <Grid Margin="18,14,12,7" ColumnDefinitions="*,Auto">
+              <TextBlock Text="Albums" Foreground="{DynamicResource AppSubtleTextBrush}" FontSize="12" FontWeight="SemiBold" />
+              <Button Grid.Column="1" Classes="brand-button" Click="ManageAlbums" Padding="0" BorderThickness="0">
+                <TextBlock Text="Manage" Foreground="#0F6382" FontSize="12" />
+              </Button>
+            </Grid>
+            <ListBox Name="AlbumList" ItemsSource="{Binding Albums}" SelectionChanged="AlbumSelected" Margin="12,0,8,2">
+              <ListBox.ItemTemplate>
+                <DataTemplate DataType="models:Album">
+                  <Grid ColumnDefinitions="22,*,Auto" Margin="5,3">
+                    <TextBlock Text="★" Foreground="#D99414" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding Name}" Foreground="{DynamicResource AppTextBrush}"
+                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    <Border Grid.Column="2" Background="{DynamicResource AppBadgeBrush}" CornerRadius="8" Padding="6,1" Margin="8,0,1,0">
+                      <TextBlock Text="{Binding PhotoCount}" Foreground="{DynamicResource AppBadgeTextBrush}" FontSize="10" />
+                    </Border>
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+
+            <Border BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="0,1,0,0" Margin="12,10,12,0" />
+            <Grid Margin="18,14,12,7" ColumnDefinitions="*,Auto">
+              <TextBlock Text="People" Foreground="{DynamicResource AppSubtleTextBrush}" FontSize="12" FontWeight="SemiBold" />
+              <Button Grid.Column="1" Classes="brand-button" Click="ManagePeople" Padding="0" BorderThickness="0">
+                <TextBlock Text="Manage" Foreground="#0F6382" FontSize="12" />
+              </Button>
+            </Grid>
+            <ListBox Name="PeopleList" ItemsSource="{Binding People}" SelectionChanged="PersonSelected" Margin="12,0,8,2">
+              <ListBox.ItemTemplate>
+                <DataTemplate DataType="models:FacePerson">
+                  <Grid ColumnDefinitions="28,*,Auto" Margin="5,3">
+                    <Border Width="22" Height="22" CornerRadius="11" ClipToBounds="True" Background="{DynamicResource AppBadgeBrush}">
+                      <Image Source="{Binding RepresentativeFacePath}" Stretch="UniformToFill" />
+                    </Border>
+                    <TextBlock Grid.Column="1" Text="{Binding DisplayName}" Foreground="{DynamicResource AppTextBrush}"
+                               VerticalAlignment="Center" Margin="6,0,0,0" TextTrimming="CharacterEllipsis" />
+                    <Border Grid.Column="2" Background="{DynamicResource AppBadgeBrush}" CornerRadius="8" Padding="6,1" Margin="8,0,1,0">
+                      <TextBlock Text="{Binding PhotoCount}" Foreground="{DynamicResource AppBadgeTextBrush}" FontSize="10" />
+                    </Border>
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+
+            <Border BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="0,1,0,0" Margin="12,10,12,0" />
+            <TextBlock Text="Folders" Foreground="{DynamicResource AppSubtleTextBrush}" FontSize="12" FontWeight="SemiBold"
+                       Margin="18,14,0,7" />
             <TreeView Name="FolderTree" ItemsSource="{Binding Folders}"
-                      SelectionChanged="FolderSelected" Margin="10,0,8,16">
+                      SelectionChanged="FolderSelected" Margin="12,0,8,16">
               <TreeView.ItemTemplate>
                 <TreeDataTemplate DataType="vm:FolderNode" ItemsSource="{Binding Children}">
-                  <Grid ColumnDefinitions="*,Auto" Margin="3,3">
-                    <TextBlock Text="{Binding DisplayName}" Foreground="#26333A"
+                  <Grid ColumnDefinitions="23,*,Auto" Margin="2,2">
+                    <TextBlock Text="📁" FontSize="15" Foreground="#A56B00" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding DisplayName}" Foreground="{DynamicResource AppTextBrush}"
+                               VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis" />
-                    <TextBlock Text="{Binding Count}" Grid.Column="1" Foreground="#738287"
-                               Margin="9,0,0,0" />
+                    <Border Grid.Column="2" Background="{DynamicResource AppBadgeBrush}" CornerRadius="8" Padding="6,1" Margin="8,0,1,0"
+                            VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Count}" Foreground="{DynamicResource AppBadgeTextBrush}" FontSize="10" />
+                    </Border>
                   </Grid>
                 </TreeDataTemplate>
               </TreeView.ItemTemplate>
@@ -159,16 +240,56 @@
       -->
       <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Disabled">
         <controls:VirtualizingPhotoTimeline Name="PhotoTimeline" ItemsSource="{Binding Groups}"
-                                            PhotoDoubleClicked="OpenPhotoViewer" />
+                                            PhotoDoubleClicked="OpenPhotoViewer"
+                                            SelectionChanged="PhotoSelectionChanged"
+                                            FavoriteToggleRequested="ToggleFavoriteFromTile"
+                                            SlideshowRequested="StartSlideshowForGroup"
+                                            ContextActionRequested="HandlePhotoContextAction" />
       </ScrollViewer>
     </Grid>
 
-    <Border Grid.Row="3" Background="White" BorderBrush="#D5DEDF"
+    <Border Grid.Row="3" Background="{DynamicResource AppSurfaceBrush}" BorderBrush="{DynamicResource AppBorderBrush}"
             BorderThickness="0,1,0,0" Padding="20,0">
       <Grid ColumnDefinitions="*,Auto">
         <TextBlock Name="StatusText" Text="Choose a folder to build your private library."
                    VerticalAlignment="Center" />
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="24" VerticalAlignment="Center">
+        <StackPanel Name="SelectionActions" Grid.Column="1" Orientation="Horizontal" Spacing="10"
+                    VerticalAlignment="Center" IsVisible="False">
+          <TextBlock Text="Selection:" Foreground="{DynamicResource AppTextBrush}" FontWeight="SemiBold" VerticalAlignment="Center" />
+          <TextBlock Name="SelectedCountText" Foreground="{DynamicResource AppTextBrush}" VerticalAlignment="Center" />
+          <Button Classes="brand-button" Name="ToggleFavoriteButton" Click="ToggleFavoriteSelected"
+                  Padding="0" BorderThickness="0">
+            <Border Background="#FFFFFF" BorderBrush="#5D98AF" BorderThickness="1" CornerRadius="4" Padding="10,5">
+              <TextBlock Name="ToggleFavoriteText" Text="Favorite" Foreground="#0F6382" FontWeight="SemiBold" />
+            </Border>
+          </Button>
+          <Button Classes="brand-button" Click="ManageAlbums" Padding="0" BorderThickness="0">
+            <Border Background="#FFFFFF" BorderBrush="#5D98AF" BorderThickness="1" CornerRadius="4" Padding="10,5">
+              <TextBlock Text="Add to album" Foreground="#0F6382" FontWeight="SemiBold" />
+            </Border>
+          </Button>
+          <Button Classes="brand-button" Click="CopySelected" Padding="0" BorderThickness="0">
+            <Border Background="#FFFFFF" BorderBrush="#5D98AF" BorderThickness="1" CornerRadius="4" Padding="10,5">
+              <TextBlock Text="Copy to…" Foreground="#0F6382" FontWeight="SemiBold" />
+            </Border>
+          </Button>
+          <Button Classes="brand-button" Click="MoveSelected" Padding="0" BorderThickness="0">
+            <Border Background="#FFFFFF" BorderBrush="#5D98AF" BorderThickness="1" CornerRadius="4" Padding="10,5">
+              <TextBlock Text="Move to…" Foreground="#0F6382" FontWeight="SemiBold" />
+            </Border>
+          </Button>
+          <Button Classes="brand-button" Click="DeleteSelected" Padding="0" BorderThickness="0">
+            <Border Background="#FFFFFF" BorderBrush="#B64945" BorderThickness="1" CornerRadius="4" Padding="10,5">
+              <TextBlock Text="Delete" Foreground="#A33B37" FontWeight="SemiBold" />
+            </Border>
+          </Button>
+          <Button Classes="brand-button" Click="ClearSelection" Padding="0" BorderThickness="0">
+            <Border Background="#FFFFFF" BorderBrush="#5D98AF" BorderThickness="1" CornerRadius="4" Padding="10,5">
+              <TextBlock Text="Clear" Foreground="#0F6382" FontWeight="SemiBold" />
+            </Border>
+          </Button>
+        </StackPanel>
+        <StackPanel Name="DefaultFooterActions" Grid.Column="1" Orientation="Horizontal" Spacing="24" VerticalAlignment="Center">
           <TextBlock Text="✉ Share" />
           <TextBlock Text="⎙ Print" />
           <TextBlock Text="⇧ Export" />
