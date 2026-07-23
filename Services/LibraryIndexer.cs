@@ -7,19 +7,53 @@ namespace PicNest.Services;
 /// <summary>Incremental indexer: derived thumbnails are cached once and regenerated only when source content changes.</summary>
 public sealed class LibraryIndexer(LibraryDatabase database)
 {
+    private const int DatabaseBatchSize = 250;
     private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".tif", ".tiff" };
 
     public async Task<int> IndexFolderAsync(string folder, IProgress<string>? progress = null, CancellationToken cancellationToken = default)
     {
-        var count = 0;
-        foreach (var path in Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories))
+        if (!Directory.Exists(folder))
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (!IsSupportedImage(path)) continue;
-            progress?.Report(Path.GetFileName(path));
-            try { await IndexImageAsync(path, cancellationToken); count++; }
-            catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException) { }
+            await DiagnosticLog.WarningAsync($"Scan skipped because directory does not exist: {folder}");
+            return 0;
         }
+
+        var count = 0;
+        var batch = new List<PhotoRecord>(DatabaseBatchSize);
+        foreach (var directory in EnumerateDirectories(folder))
+        {
+            await DiagnosticLog.InformationAsync($"Scanning directory: {directory}");
+            string[] paths;
+            try { paths = Directory.GetFiles(directory); }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+            {
+                await DiagnosticLog.WarningAsync($"Could not enumerate files in {directory}: {error.Message}");
+                continue;
+            }
+
+            foreach (var path in paths)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!IsSupportedImage(path)) continue;
+                progress?.Report(Path.GetFileName(path));
+                try
+                {
+                    batch.Add(await CreatePhotoRecordAsync(path, cancellationToken));
+                    count++;
+                    if (batch.Count == DatabaseBatchSize)
+                    {
+                        await database.UpsertBatchAsync(batch, cancellationToken);
+                        batch.Clear();
+                    }
+                }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
+                {
+                    await DiagnosticLog.WarningAsync($"Could not index {path}: {error.Message}");
+                }
+            }
+        }
+        await database.UpsertBatchAsync(batch, cancellationToken);
+        await DiagnosticLog.InformationAsync($"Completed scan of {folder}. Indexed {count:n0} photos.");
         return count;
     }
 
@@ -28,6 +62,11 @@ public sealed class LibraryIndexer(LibraryDatabase database)
     public async Task IndexImageAsync(string path, CancellationToken cancellationToken = default)
     {
         if (!File.Exists(path) || !IsSupportedImage(path)) return;
+        await database.UpsertAsync(await CreatePhotoRecordAsync(path, cancellationToken));
+    }
+
+    private static async Task<PhotoRecord> CreatePhotoRecordAsync(string path, CancellationToken cancellationToken)
+    {
         var hash = await HashFileAsync(path, cancellationToken);
         var thumbPath = Path.Combine(LibraryPaths.Thumbnails, $"{hash}.jpg");
         using var source = SKBitmap.Decode(path) ?? throw new InvalidDataException($"PicNest could not decode {path}.");
@@ -42,7 +81,7 @@ public sealed class LibraryIndexer(LibraryDatabase database)
         }
         // This fallback keeps indexing fast and reliable; EXIF/XMP extraction will replace it in the metadata milestone.
         var date = File.GetLastWriteTime(path);
-        await database.UpsertAsync(new PhotoRecord(0, path, Path.GetDirectoryName(path)!, date, hash, source.Width, source.Height, thumbPath, false));
+        return new PhotoRecord(0, path, Path.GetDirectoryName(path)!, date, hash, source.Width, source.Height, thumbPath, false);
     }
 
     private static async Task<string> HashFileAsync(string path, CancellationToken cancellationToken)
@@ -50,5 +89,20 @@ public sealed class LibraryIndexer(LibraryDatabase database)
         await using var stream = File.OpenRead(path);
         using var sha = SHA256.Create();
         return Convert.ToHexString(await sha.ComputeHashAsync(stream, cancellationToken)).ToLowerInvariant();
+    }
+
+    private static IEnumerable<string> EnumerateDirectories(string root)
+    {
+        var pending = new Stack<string>();
+        pending.Push(root);
+        while (pending.Count > 0)
+        {
+            var directory = pending.Pop();
+            yield return directory;
+            string[] children;
+            try { children = Directory.GetDirectories(directory); }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException) { continue; }
+            foreach (var child in children) pending.Push(child);
+        }
     }
 }

@@ -1,7 +1,10 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.Platform.Storage;
+using Avalonia.Media;
 using Avalonia.Threading;
+using PicNest.Controls;
+using PicNest.Models;
 using PicNest.ViewModels;
 
 namespace PicNest;
@@ -9,10 +12,12 @@ namespace PicNest;
 public partial class MainWindow : Window
 {
     private readonly LibraryViewModel _viewModel = new();
+
     public MainWindow()
     {
         InitializeComponent();
         DataContext = _viewModel;
+        UpdateThumbnailButtonState();
         Opened += InitializeLibrary;
         Closed += (_, _) => _viewModel.Dispose();
         _viewModel.LibraryChanged += (_, _) => Dispatcher.UIThread.Post(async () =>
@@ -29,27 +34,22 @@ public partial class MainWindow : Window
         StatusText.Text = _viewModel.Status;
     }
 
-    private async void ImportFolder(object? sender, RoutedEventArgs e)
+    private async void ManageFolders(object? sender, RoutedEventArgs e)
     {
-        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "Choose a photo folder", AllowMultiple = false });
-        if (folders.Count == 0 || folders[0].TryGetLocalPath() is not { } path) return;
-        StatusText.Text = "Scanning photos and generating thumbnails…";
-        try
-        {
-            await _viewModel.ScanAsync(path, new Progress<string>(name => StatusText.Text = $"Indexing {name}"));
-            StatusText.Text = _viewModel.Status;
-        }
-        catch (Exception error) { StatusText.Text = $"Could not scan folder: {error.Message}"; }
+        var dialog = new ManageFoldersWindow(_viewModel);
+        await dialog.ShowDialog(this);
+        StatusText.Text = _viewModel.Status;
     }
 
     private async void SearchChanged(object? sender, TextChangedEventArgs e)
     {
-        if (SearchBox is not null && SearchBox.Text is not null) await _viewModel.RefreshAsync(SearchBox.Text);
+        if (SearchBox is not null && SearchBox.Text is not null)
+            await _viewModel.RefreshAsync(SearchBox.Text);
     }
 
     private async void RefreshFolders(object? sender, RoutedEventArgs e)
     {
-        StatusText.Text = "Refreshing folders and thumbnails…";
+        StatusText.Text = "Refreshing folders and thumbnails...";
         try
         {
             await _viewModel.RefreshLibraryAsync(new Progress<string>(message => StatusText.Text = message));
@@ -70,5 +70,44 @@ public partial class MainWindow : Window
         if (FolderTree.SelectedItem is not FolderNode folder) return;
         await _viewModel.SelectFolderAsync(folder.Path);
         StatusText.Text = $"Showing {folder.DisplayName}.";
+    }
+
+    private async void OpenPhotoViewer(object? sender, PhotoRecord photo)
+    {
+        var viewer = new PhotoViewerWindow(_viewModel.GetVisiblePhotos(), photo);
+        await viewer.ShowDialog(this);
+    }
+
+    private void SetSmallThumbnails(object? sender, RoutedEventArgs e) =>
+        SetThumbnailSize(ThumbnailDisplaySize.Small);
+
+    private void SetMediumThumbnails(object? sender, RoutedEventArgs e) =>
+        SetThumbnailSize(ThumbnailDisplaySize.Medium);
+
+    private void SetLargeThumbnails(object? sender, RoutedEventArgs e) =>
+        SetThumbnailSize(ThumbnailDisplaySize.Large);
+
+    private void SetThumbnailSize(ThumbnailDisplaySize size)
+    {
+        PhotoTimeline.ThumbnailSize = size;
+        UpdateThumbnailButtonState();
+        StatusText.Text = $"Thumbnail size set to {size.ToString().ToLowerInvariant()}.";
+    }
+
+    private void UpdateThumbnailButtonState()
+    {
+        SetThumbnailButtonState(SmallThumbnailBorder, SmallThumbnailText,
+            PhotoTimeline.ThumbnailSize == ThumbnailDisplaySize.Small);
+        SetThumbnailButtonState(MediumThumbnailBorder, MediumThumbnailText,
+            PhotoTimeline.ThumbnailSize == ThumbnailDisplaySize.Medium);
+        SetThumbnailButtonState(LargeThumbnailBorder, LargeThumbnailText,
+            PhotoTimeline.ThumbnailSize == ThumbnailDisplaySize.Large);
+    }
+
+    private static void SetThumbnailButtonState(Border border, TextBlock text, bool isSelected)
+    {
+        border.Background = new SolidColorBrush(Color.Parse(isSelected ? "#167397" : "#FFFFFF"));
+        border.BorderBrush = new SolidColorBrush(Color.Parse(isSelected ? "#0F6382" : "#5D98AF"));
+        text.Foreground = new SolidColorBrush(Color.Parse(isSelected ? "#FFFFFF" : "#0F6382"));
     }
 }
