@@ -32,6 +32,16 @@ dotnet restore
 dotnet run
 ```
 
+## Create a Windows installer
+
+PicNest has a per-user Windows x64 installer. It is self-contained, so the recipient does not need the .NET SDK or runtime. Install [Inno Setup](https://jrsoftware.org/isinfo.php), then run:
+
+```powershell
+.\installer\Build-Installer.ps1 -Version 0.1.0
+```
+
+The result is `artifacts\installer\PicNest-Setup-0.1.0-win-x64.exe`. The installer adds Start Menu and optional desktop shortcuts, and its uninstall leaves `%LOCALAPPDATA%\PicNest` intact so a user's local catalog and preferences are not deleted.
+
 ## Deliberately next
 
 1. A full-screen viewer plus ratings, captions and tags.
