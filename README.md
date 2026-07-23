@@ -11,6 +11,7 @@ PicNest is a deliberately local-first, folder-first photo library. The catalog i
 - Small, medium, and large thumbnail layouts
 - SQLite scan writes grouped into 250-photo transactions
 - Double-click any thumbnail to open its original image in a viewer with zoom, reset, and next/previous navigation
+- Local video scanning for MP4, MOV, MKV, AVI, M4V, WMV, WebM, MTS/M2TS, and 3GP; embedded LibVLC playback with play/pause controls
 - File-date grouping (EXIF/XMP extraction is the next metadata milestone)
 - Persistent folder roots, hierarchical folder tree, direct folder counts, and click-to-filter timeline
 - **Manage folders** dialog for listing imports, adding another folder, or removing a folder from the PicNest catalog without affecting its original files
@@ -35,7 +36,7 @@ dotnet run
 
 1. A full-screen viewer plus ratings, captions and tags.
 2. EXIF/XMP date extraction.
-3. Video frames and scrub previews via FFmpeg.
+3. Real video-frame thumbnails, duration metadata, and scrub previews.
 4. Local face grouping, semantic AI embeddings, and perceptual duplicate clusters—all optional, all on-device.
 
 SQLite is retained as the source of truth; an embedding extension or small sidecar index can be added later without disrupting the library.

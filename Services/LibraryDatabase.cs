@@ -31,6 +31,8 @@ public sealed class LibraryDatabase
               Height INTEGER NOT NULL,
               ThumbnailPath TEXT NOT NULL,
               IsFavorite INTEGER NOT NULL DEFAULT 0,
+              MediaKind TEXT NOT NULL DEFAULT 'Image',
+              DurationMilliseconds INTEGER NULL,
               Caption TEXT NOT NULL DEFAULT '',
               ImportedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
             CREATE INDEX IF NOT EXISTS IX_Photos_DateTaken ON Photos(DateTaken DESC);
@@ -43,6 +45,8 @@ public sealed class LibraryDatabase
             CREATE TABLE IF NOT EXISTS People (PhotoId INTEGER NOT NULL REFERENCES Photos(Id) ON DELETE CASCADE, PersonName TEXT NOT NULL COLLATE NOCASE, PRIMARY KEY(PhotoId, PersonName));
             """;
         await command.ExecuteNonQueryAsync();
+        await EnsureColumnAsync(db, "Photos", "MediaKind", "TEXT NOT NULL DEFAULT 'Image'");
+        await EnsureColumnAsync(db, "Photos", "DurationMilliseconds", "INTEGER NULL");
     }
 
     public async Task AddRootAsync(string path)
@@ -149,10 +153,11 @@ public sealed class LibraryDatabase
         var cmd = db.CreateCommand();
         cmd.Transaction = transaction;
         cmd.CommandText = """
-            INSERT INTO Photos(Path, FolderPath, DateTaken, Hash, Width, Height, ThumbnailPath, IsFavorite)
-            VALUES($path,$folder,$date,$hash,$width,$height,$thumb,$favorite)
+            INSERT INTO Photos(Path, FolderPath, DateTaken, Hash, Width, Height, ThumbnailPath, IsFavorite, MediaKind, DurationMilliseconds)
+            VALUES($path,$folder,$date,$hash,$width,$height,$thumb,$favorite,$mediaKind,$duration)
             ON CONFLICT(Path) DO UPDATE SET FolderPath=excluded.FolderPath, DateTaken=excluded.DateTaken,
-              Hash=excluded.Hash, Width=excluded.Width, Height=excluded.Height, ThumbnailPath=excluded.ThumbnailPath;
+              Hash=excluded.Hash, Width=excluded.Width, Height=excluded.Height, ThumbnailPath=excluded.ThumbnailPath,
+              MediaKind=excluded.MediaKind, DurationMilliseconds=excluded.DurationMilliseconds;
             """;
         var path = cmd.Parameters.Add("$path", SqliteType.Text);
         var folder = cmd.Parameters.Add("$folder", SqliteType.Text);
@@ -162,6 +167,8 @@ public sealed class LibraryDatabase
         var height = cmd.Parameters.Add("$height", SqliteType.Integer);
         var thumbnail = cmd.Parameters.Add("$thumb", SqliteType.Text);
         var favorite = cmd.Parameters.Add("$favorite", SqliteType.Integer);
+        var mediaKind = cmd.Parameters.Add("$mediaKind", SqliteType.Text);
+        var duration = cmd.Parameters.Add("$duration", SqliteType.Integer);
 
         foreach (var photo in photos)
         {
@@ -174,6 +181,8 @@ public sealed class LibraryDatabase
             height.Value = photo.Height;
             thumbnail.Value = photo.ThumbnailPath;
             favorite.Value = photo.IsFavorite ? 1 : 0;
+            mediaKind.Value = photo.MediaKind.ToString();
+            duration.Value = photo.DurationMilliseconds is null ? DBNull.Value : photo.DurationMilliseconds.Value;
             await cmd.ExecuteNonQueryAsync(cancellationToken);
         }
 
@@ -186,7 +195,7 @@ public sealed class LibraryDatabase
         await db.OpenAsync();
         var cmd = db.CreateCommand();
         cmd.CommandText = """
-          SELECT Id,Path,FolderPath,DateTaken,Hash,Width,Height,ThumbnailPath,IsFavorite FROM Photos
+          SELECT Id,Path,FolderPath,DateTaken,Hash,Width,Height,ThumbnailPath,IsFavorite,MediaKind,DurationMilliseconds FROM Photos
           WHERE ($query='' OR Path LIKE '%' || $query || '%' OR Caption LIKE '%' || $query || '%')
             AND ($folder='' OR FolderPath=$folder OR FolderPath LIKE $folderPrefix)
           ORDER BY DateTaken DESC, Path;
@@ -197,7 +206,31 @@ public sealed class LibraryDatabase
         cmd.Parameters.AddWithValue("$folderPrefix", folder.Length == 0 ? "" : (Path.EndsInDirectorySeparator(folder) ? folder : folder + Path.DirectorySeparatorChar) + "%");
         var results = new List<PhotoRecord>();
         await using var rows = await cmd.ExecuteReaderAsync();
-        while (await rows.ReadAsync()) results.Add(new PhotoRecord(rows.GetInt64(0), rows.GetString(1), rows.GetString(2), DateTime.Parse(rows.GetString(3)), rows.GetString(4), rows.GetInt32(5), rows.GetInt32(6), rows.GetString(7), rows.GetBoolean(8)));
+        while (await rows.ReadAsync())
+        {
+            var mediaKind = Enum.TryParse<MediaKind>(rows.GetString(9), true, out var parsedKind) ? parsedKind : MediaKind.Image;
+            long? duration = rows.IsDBNull(10) ? null : rows.GetInt64(10);
+            results.Add(new PhotoRecord(rows.GetInt64(0), rows.GetString(1), rows.GetString(2), DateTime.Parse(rows.GetString(3)), rows.GetString(4), rows.GetInt32(5), rows.GetInt32(6), rows.GetString(7), rows.GetBoolean(8), mediaKind, duration));
+        }
         return results;
+    }
+
+    private static async Task EnsureColumnAsync(SqliteConnection db, string tableName, string columnName, string columnDefinition)
+    {
+        var info = db.CreateCommand();
+        info.CommandText = $"PRAGMA table_info({tableName});";
+        var hasColumn = false;
+        await using (var rows = await info.ExecuteReaderAsync())
+            while (await rows.ReadAsync())
+                if (string.Equals(rows.GetString(1), columnName, StringComparison.OrdinalIgnoreCase))
+                {
+                    hasColumn = true;
+                    break;
+                }
+        if (hasColumn) return;
+
+        var alter = db.CreateCommand();
+        alter.CommandText = $"ALTER TABLE {tableName} ADD COLUMN {columnName} {columnDefinition};";
+        await alter.ExecuteNonQueryAsync();
     }
 }

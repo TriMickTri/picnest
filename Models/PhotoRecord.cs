@@ -1,5 +1,11 @@
 namespace PicNest.Models;
 
+public enum MediaKind
+{
+    Image,
+    Video
+}
+
 public sealed record PhotoRecord(
     long Id,
     string Path,
@@ -9,4 +15,6 @@ public sealed record PhotoRecord(
     int Width,
     int Height,
     string ThumbnailPath,
-    bool IsFavorite);
+    bool IsFavorite,
+    MediaKind MediaKind = MediaKind.Image,
+    long? DurationMilliseconds = null);

@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vlc="clr-namespace:LibVLCSharp.Avalonia;assembly=LibVLCSharp.Avalonia"
         x:Class="PicNest.PhotoViewerWindow"
         Width="1280"
         Height="860"
@@ -7,7 +8,7 @@
         MinHeight="520"
         WindowStartupLocation="CenterOwner"
         Background="#1B2225">
-  <Grid RowDefinitions="64,*,34">
+  <Grid RowDefinitions="64,*,58,34">
     <Border Background="#26333A" Padding="20,0">
       <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
         <StackPanel Spacing="2">
@@ -21,32 +22,51 @@
           <Border Background="#1B2225" CornerRadius="3" Padding="9,5">
             <TextBlock Name="PositionText" Foreground="#D9E2E3" FontSize="11" />
           </Border>
-          <Button Click="ZoomOut" Content="-" Width="32" />
+          <Button Name="PlayPauseButton" Click="TogglePlayback" Content="Pause" IsVisible="False" />
+          <Button Name="ZoomOutButton" Click="ZoomOut" Content="-" Width="32" />
           <Border Background="#1B2225" CornerRadius="3" Padding="9,5">
             <TextBlock Name="ZoomText" Foreground="#D9E2E3" FontSize="11" />
           </Border>
-          <Button Click="ZoomIn" Content="+" Width="32" />
-          <Button Click="ResetView" Content="Reset view" />
+          <Button Name="ZoomInButton" Click="ZoomIn" Content="+" Width="32" />
+          <Button Name="ResetViewButton" Click="ResetView" Content="Reset view" />
           <Button Click="CloseViewer" Content="Close" />
         </StackPanel>
       </Grid>
     </Border>
 
     <Border Grid.Row="1" Background="#111719">
-      <ScrollViewer Name="ImageScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
-                    SizeChanged="ViewerViewportChanged">
-        <Grid Name="ImageHost" Background="#111719">
-          <!-- This is the original image, not the PicNest thumbnail cache. -->
-          <Image Name="PhotoImage" Stretch="Fill" HorizontalAlignment="Center" VerticalAlignment="Center" />
-          <Border Name="LoadError" IsVisible="False" Background="#26333A" CornerRadius="5"
-                  Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center">
-            <TextBlock Name="LoadErrorText" Foreground="White" TextWrapping="Wrap" MaxWidth="520" />
-          </Border>
-        </Grid>
-      </ScrollViewer>
+      <Grid>
+        <ScrollViewer Name="ImageScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                      SizeChanged="ViewerViewportChanged">
+          <Grid Name="ImageHost" Background="#111719">
+            <!-- This is the original image, not the PicNest thumbnail cache. -->
+            <Image Name="PhotoImage" Stretch="Fill" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            <Border Name="LoadError" IsVisible="False" Background="#26333A" CornerRadius="5"
+                    Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center">
+              <TextBlock Name="LoadErrorText" Foreground="White" TextWrapping="Wrap" MaxWidth="520" />
+            </Border>
+          </Grid>
+        </ScrollViewer>
+        <vlc:VideoView Name="VideoView" IsVisible="False" />
+      </Grid>
     </Border>
 
-    <Border Grid.Row="2" Background="#26333A" Padding="20,0">
+    <Border Name="VideoControls" Grid.Row="2" IsVisible="False" Background="#202A2E" Padding="20,0">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,110,Auto" ColumnSpacing="10" VerticalAlignment="Center">
+        <Button Name="StopVideoButton" Click="StopVideo" Content="Stop" />
+        <TextBlock Grid.Column="1" Name="VideoTimeText" Foreground="#D9E2E3" FontSize="11"
+                   VerticalAlignment="Center" Text="0:00 / 0:00" />
+        <Slider Grid.Column="2" Name="VideoPositionSlider" Minimum="0" Maximum="1" Value="0"
+                ValueChanged="VideoPositionChanged" VerticalAlignment="Center" />
+        <Button Grid.Column="3" Name="MuteButton" Click="ToggleMute" Content="Mute" />
+        <TextBlock Grid.Column="4" Foreground="#B9C6C9" FontSize="11" VerticalAlignment="Center" Text="Volume" />
+        <Slider Grid.Column="5" Name="VolumeSlider" Minimum="0" Maximum="100" Value="100"
+                ValueChanged="VolumeChanged" VerticalAlignment="Center" />
+        <Button Grid.Column="6" Click="CloseViewer" Content="Close viewer" />
+      </Grid>
+    </Border>
+
+    <Border Grid.Row="3" Background="#26333A" Padding="20,0">
       <TextBlock Name="SourcePath" Foreground="#B9C6C9" FontSize="11"
                  VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
     </Border>
