@@ -8,8 +8,14 @@
         MinHeight="340"
         WindowStartupLocation="CenterOwner"
         Title="Manage imported folders">
-  <Grid RowDefinitions="Auto,*,Auto" Background="#F8FAFA">
-    <Border Background="White" BorderBrush="#D5DEDF" BorderThickness="0,0,0,1" Padding="24,18">
+  <Window.Styles>
+    <Style Selector="ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
+  </Window.Styles>
+  <Grid RowDefinitions="Auto,*,Auto" Background="{DynamicResource AppSurfaceBrush}">
+    <Border Background="{DynamicResource AppSurfaceBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="0,0,0,1" Padding="20,14">
       <StackPanel Spacing="4">
         <TextBlock Text="Manage imported folders" FontSize="21" FontWeight="SemiBold" />
         <TextBlock Text="PicNest reads these folders but never moves, edits, or deletes your original files."
@@ -17,22 +23,28 @@
       </StackPanel>
     </Border>
 
-    <Border Grid.Row="1" Margin="24,18" Background="White" BorderBrush="#D5DEDF"
-            BorderThickness="1" CornerRadius="5" Padding="8">
-      <ListBox Name="FolderList" ItemsSource="{Binding ImportedFolders}">
+    <Border Grid.Row="1" Margin="20,12" Background="{DynamicResource AppSurfaceBrush}" BorderBrush="{DynamicResource AppBorderBrush}"
+            BorderThickness="1" CornerRadius="4" Padding="3">
+      <ListBox Name="FolderList" ItemsSource="{Binding ImportedFolders}" Background="{DynamicResource AppSurfaceBrush}"
+               SelectionChanged="FolderSelected">
         <ListBox.ItemTemplate>
           <DataTemplate DataType="models:LibraryRoot">
-            <StackPanel Margin="10,8" Spacing="3">
-              <TextBlock Text="{Binding DisplayName}" Foreground="#26333A" FontWeight="SemiBold" />
-              <TextBlock Text="{Binding Path}" Foreground="#738287" FontSize="12" TextTrimming="CharacterEllipsis" />
-            </StackPanel>
+            <Grid Margin="8,4" ColumnDefinitions="*,Auto" ColumnSpacing="10">
+              <StackPanel Spacing="1">
+                <TextBlock Text="{Binding DisplayName}" Foreground="{DynamicResource AppTextBrush}" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding Path}" Foreground="{DynamicResource AppMutedTextBrush}" FontSize="12" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <Border Grid.Column="1" Background="{DynamicResource AppBadgeBrush}" CornerRadius="8" Padding="7,2" VerticalAlignment="Center">
+                <TextBlock Text="{Binding ProtectionLabel}" Foreground="{DynamicResource AppBadgeTextBrush}" FontSize="10" />
+              </Border>
+            </Grid>
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
     </Border>
 
-    <Border Grid.Row="2" Background="White" BorderBrush="#D5DEDF" BorderThickness="0,1,0,0" Padding="24,14">
-      <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+    <Border Grid.Row="2" Background="{DynamicResource AppSurfaceBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="0,1,0,0" Padding="20,10">
+      <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto">
         <TextBlock Name="DialogStatus" Classes="muted" VerticalAlignment="Center" TextWrapping="Wrap" />
         <Button Grid.Column="1" Classes="brand-button" Click="AddFolder" Padding="0" BorderThickness="0" Margin="0,0,8,0">
           <Border Background="#167397" CornerRadius="4" Padding="12,6">
@@ -44,7 +56,8 @@
             <TextBlock Text="Remove selected" Foreground="White" FontWeight="SemiBold" />
           </Border>
         </Button>
-        <Button Grid.Column="3" Click="CloseDialog" Content="Done" Padding="14,6" />
+        <Button Grid.Column="3" Name="ToggleProtectionButton" Click="ToggleProtection" Content="Protect selected" Margin="0,0,8,0" />
+        <Button Grid.Column="4" Click="CloseDialog" Content="Done" Padding="14,6" />
       </Grid>
     </Border>
   </Grid>

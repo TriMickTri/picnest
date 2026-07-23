@@ -17,4 +17,5 @@ public sealed record PhotoRecord(
     string ThumbnailPath,
     bool IsFavorite,
     MediaKind MediaKind = MediaKind.Image,
-    long? DurationMilliseconds = null);
+    long? DurationMilliseconds = null,
+    int RotationDegrees = 0);

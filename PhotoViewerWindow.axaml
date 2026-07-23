@@ -22,7 +22,10 @@
           <Border Background="#1B2225" CornerRadius="3" Padding="9,5">
             <TextBlock Name="PositionText" Foreground="#D9E2E3" FontSize="11" />
           </Border>
+          <Button Name="SlideshowPauseButton" Click="ToggleSlideshow" Content="Pause slideshow" IsVisible="False" />
           <Button Name="PlayPauseButton" Click="TogglePlayback" Content="Pause" IsVisible="False" />
+          <Button Name="RotateLeftButton" Click="RotateLeft" Content="Rotate left" />
+          <Button Name="RotateRightButton" Click="RotateRight" Content="Rotate right" />
           <Button Name="ZoomOutButton" Click="ZoomOut" Content="-" Width="32" />
           <Border Background="#1B2225" CornerRadius="3" Padding="9,5">
             <TextBlock Name="ZoomText" Foreground="#D9E2E3" FontSize="11" />

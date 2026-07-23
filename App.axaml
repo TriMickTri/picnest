@@ -1,6 +1,20 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="PicNest.App">
+  <Application.Resources>
+    <SolidColorBrush x:Key="AppPageBackgroundBrush" Color="#F8FAFA" />
+    <SolidColorBrush x:Key="AppSurfaceBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="AppToolbarBrush" Color="#EDF2F3" />
+    <SolidColorBrush x:Key="AppBorderBrush" Color="#D5DEDF" />
+    <SolidColorBrush x:Key="AppTextBrush" Color="#26333A" />
+    <SolidColorBrush x:Key="AppMutedTextBrush" Color="#738287" />
+    <SolidColorBrush x:Key="AppSubtleTextBrush" Color="#66777D" />
+    <SolidColorBrush x:Key="AppBadgeBrush" Color="#E4EBED" />
+    <SolidColorBrush x:Key="AppBadgeTextBrush" Color="#52666D" />
+    <SolidColorBrush x:Key="AppRaisedSurfaceBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="AppHoverBrush" Color="#E5F3FF" />
+    <SolidColorBrush x:Key="AppSelectedBrush" Color="#CCE8FF" />
+  </Application.Resources>
   <Application.Styles>
     <FluentTheme />
 
@@ -22,22 +36,47 @@
       <Setter Property="Foreground" Value="White" />
     </Style>
 
+    <Style Selector="Button.selection-button">
+      <Setter Property="Background" Value="#FFFFFF" />
+      <Setter Property="BorderBrush" Value="#5D98AF" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Foreground" Value="#0F6382" />
+      <Setter Property="Padding" Value="10,5" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.selection-button:pointerover">
+      <Setter Property="Background" Value="#E5F3FF" />
+      <Setter Property="BorderBrush" Value="#167397" />
+    </Style>
+    <Style Selector="Button.selection-button.selection-delete">
+      <Setter Property="BorderBrush" Value="#B64945" />
+      <Setter Property="Foreground" Value="#A33B37" />
+    </Style>
+    <Style Selector="Button.selection-button.selection-delete:pointerover">
+      <Setter Property="Background" Value="#FCE8E7" />
+      <Setter Property="BorderBrush" Value="#A33B37" />
+    </Style>
+
     <Style Selector="TreeView">
-      <Setter Property="Foreground" Value="#26333A" />
+      <Setter Property="Foreground" Value="{DynamicResource AppTextBrush}" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="0" />
     </Style>
     <Style Selector="TreeViewItem">
       <Setter Property="IsExpanded" Value="True" />
+      <Setter Property="MinHeight" Value="27" />
+      <Setter Property="Padding" Value="2" />
     </Style>
     <Style Selector="TreeViewItem:pointerover">
-      <Setter Property="Background" Value="#DCEAF0" />
-      <Setter Property="Foreground" Value="#26333A" />
+      <Setter Property="Background" Value="{DynamicResource AppHoverBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource AppTextBrush}" />
     </Style>
     <Style Selector="TreeViewItem:selected">
-      <Setter Property="Background" Value="#C6E0EA" />
-      <Setter Property="Foreground" Value="#26333A" />
+      <Setter Property="Background" Value="{DynamicResource AppSelectedBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource AppTextBrush}" />
     </Style>
     <Style Selector="TextBlock.muted">
-      <Setter Property="Foreground" Value="#738287" />
+      <Setter Property="Foreground" Value="{DynamicResource AppMutedTextBrush}" />
     </Style>
   </Application.Styles>
 </Application>
