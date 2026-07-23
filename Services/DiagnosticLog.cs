@@ -30,6 +30,13 @@ public static class DiagnosticLog
         [CallerFilePath] string sourceFile = "") =>
         WriteAsync(DiagnosticLevel.Warning, text, function, line, sourceFile);
 
+    public static Task ErrorAsync(
+        string text,
+        [CallerMemberName] string function = "",
+        [CallerLineNumber] int line = 0,
+        [CallerFilePath] string sourceFile = "") =>
+        WriteAsync(DiagnosticLevel.Error, text, function, line, sourceFile);
+
     private static async Task WriteAsync(DiagnosticLevel level, string text, string function, int line, string sourceFile)
     {
         try

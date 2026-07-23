@@ -5,6 +5,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using PicNest.Controls;
 using PicNest.Models;
+using PicNest.Services;
 using PicNest.ViewModels;
 
 namespace PicNest;
@@ -74,8 +75,22 @@ public partial class MainWindow : Window
 
     private async void OpenPhotoViewer(object? sender, PhotoRecord photo)
     {
-        var viewer = new PhotoViewerWindow(_viewModel.GetVisiblePhotos(), photo);
-        await viewer.ShowDialog(this);
+        var mediaType = photo.MediaKind == MediaKind.Video ? "video" : "image";
+        await DiagnosticLog.InformationAsync($"Opening {mediaType} viewer: {photo.Path}");
+        PhotoViewerWindow? viewer = null;
+
+        try
+        {
+            viewer = new PhotoViewerWindow(_viewModel.GetVisiblePhotos(), photo);
+            await viewer.ShowDialog(this);
+            await DiagnosticLog.InformationAsync($"Closed {mediaType} viewer: {photo.Path}");
+        }
+        catch (Exception error)
+        {
+            viewer?.ReleaseMediaResources();
+            await DiagnosticLog.ErrorAsync($"Could not open {mediaType} viewer for {photo.Path}: {error}");
+            StatusText.Text = $"Could not open viewer: {error.Message}";
+        }
     }
 
     private void SetSmallThumbnails(object? sender, RoutedEventArgs e) =>

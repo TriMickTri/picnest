@@ -30,11 +30,11 @@ public partial class ManageFoldersWindow : Window
         });
         if (folders.Count == 0 || folders[0].TryGetLocalPath() is not { } path) return;
 
-        DialogStatus.Text = "Scanning photos and generating thumbnails...";
+        DialogStatus.Text = "Adding folder...";
         try
         {
-            await _library.ScanAsync(path, new Progress<string>(name => DialogStatus.Text = $"Indexing {name}"));
-            DialogStatus.Text = _library.Status;
+            await _library.AddFolderAndQueueIndexAsync(path);
+            DialogStatus.Text = "Folder added. Indexing is running in the background; you can close this window.";
         }
         catch (Exception error) { DialogStatus.Text = $"Could not import folder: {error.Message}"; }
     }

@@ -9,6 +9,10 @@ public sealed class LibraryViewModel : IDisposable
     private readonly LibraryDatabase _database = new();
     private readonly LibraryIndexer _indexer;
     private readonly FolderWatchService _watcher;
+    private readonly CancellationTokenSource _backgroundIndexCancellation = new();
+    private readonly SemaphoreSlim _backgroundIndexGate = new(1, 1);
+    private readonly object _backgroundIndexLock = new();
+    private readonly HashSet<string> _queuedBackgroundFolders = new(StringComparer.OrdinalIgnoreCase);
     private string _searchText = "";
     private string? _selectedFolderPath;
 
@@ -46,7 +50,65 @@ public sealed class LibraryViewModel : IDisposable
         await RefreshFolderTreeAsync();
         await RefreshAsync(_searchText);
         _watcher.Watch((await _database.GetRootsAsync()).Select(root => root.Path));
-        Status = $"{indexed:n0} photos indexed locally. Watching for changes.";
+        Status = $"{indexed:n0} media items indexed locally. Watching for changes.";
+    }
+
+    /// <summary>Adds a library root immediately and indexes it on a worker, so the folder dialog stays responsive.</summary>
+    public async Task AddFolderAndQueueIndexAsync(string folder)
+    {
+        var fullPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder));
+        await DiagnosticLog.InformationAsync($"Background import requested for: {fullPath}");
+        await _database.InitializeAsync();
+        await _database.AddRootAsync(fullPath);
+        await RefreshImportedFoldersAsync();
+        _watcher.Watch((await _database.GetRootsAsync()).Select(root => root.Path));
+
+        lock (_backgroundIndexLock)
+        {
+            if (!_queuedBackgroundFolders.Add(fullPath))
+            {
+                Status = $"{Path.GetFileName(fullPath)} is already being indexed in the background.";
+                return;
+            }
+        }
+
+        Status = $"Added {Path.GetFileName(fullPath)}. Indexing is running in the background.";
+        _ = Task.Run(() => IndexQueuedFolderAsync(fullPath, _backgroundIndexCancellation.Token));
+    }
+
+    private async Task IndexQueuedFolderAsync(string folder, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _backgroundIndexGate.WaitAsync(cancellationToken);
+            try
+            {
+                await DiagnosticLog.InformationAsync($"Background indexing started: {folder}");
+                var indexed = await _indexer.IndexFolderAsync(folder, cancellationToken: cancellationToken);
+                await RemoveMissingPhotosAsync(folder);
+                Status = $"{indexed:n0} media items indexed locally. Watching for changes.";
+                await DiagnosticLog.InformationAsync($"Background indexing completed: {folder}. {indexed:n0} media item(s) indexed.");
+            }
+            finally
+            {
+                _backgroundIndexGate.Release();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            Status = "Background indexing was cancelled while PicNest was closing.";
+            await DiagnosticLog.InformationAsync($"Background indexing cancelled: {folder}");
+        }
+        catch (Exception error)
+        {
+            Status = $"Could not finish indexing {Path.GetFileName(folder)}: {error.Message}";
+            await DiagnosticLog.ErrorAsync($"Background indexing failed for {folder}: {error}");
+        }
+        finally
+        {
+            lock (_backgroundIndexLock) _queuedBackgroundFolders.Remove(folder);
+            LibraryChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     public async Task RefreshImportedFoldersAsync()
@@ -98,8 +160,8 @@ public sealed class LibraryViewModel : IDisposable
         await RefreshAsync(_searchText);
         _watcher.Watch((await _database.GetRootsAsync()).Select(root => root.Path));
         Status = removedRoots == 0
-            ? $"Folders refreshed. {indexed:n0} photos checked."
-            : $"Folders refreshed. {indexed:n0} photos checked; removed {removedRoots:n0} missing folder(s) and {removedPhotos:n0} catalog photo(s).";
+            ? $"Folders refreshed. {indexed:n0} media items checked."
+            : $"Folders refreshed. {indexed:n0} media items checked; removed {removedRoots:n0} missing folder(s) and {removedPhotos:n0} catalog item(s).";
     }
 
     public async Task SelectFolderAsync(string? folderPath)
@@ -150,7 +212,7 @@ public sealed class LibraryViewModel : IDisposable
             return;
         }
 
-        if (!LibraryIndexer.IsSupportedImage(path))
+        if (!LibraryIndexer.IsSupportedMedia(path))
         {
             // Directory events do not have an image extension, but they still change the folder tree.
             if (change is WatcherChangeTypes.Created or WatcherChangeTypes.Deleted) LibraryChanged?.Invoke(this, EventArgs.Empty);
@@ -163,10 +225,10 @@ public sealed class LibraryViewModel : IDisposable
         else
         {
             if (change == WatcherChangeTypes.Created)
-                await DiagnosticLog.InformationAsync($"New photo found: {path}");
+                await DiagnosticLog.InformationAsync($"New {(LibraryIndexer.IsSupportedVideo(path) ? "video" : "photo")} found: {path}");
             for (var attempt = 0; attempt < 3; attempt++)
             {
-                try { await _indexer.IndexImageAsync(path); break; }
+                try { await _indexer.IndexMediaAsync(path); break; }
                 catch (IOException) when (attempt < 2) { await Task.Delay(400); }
             }
         }
@@ -224,7 +286,11 @@ public sealed class LibraryViewModel : IDisposable
         foreach (var path in await _database.GetPhotoPathsUnderRootAsync(root))
             if (!File.Exists(path)) await _database.DeleteByPathAsync(path);
     }
-    public void Dispose() => _watcher.Dispose();
+    public void Dispose()
+    {
+        _backgroundIndexCancellation.Cancel();
+        _watcher.Dispose();
+    }
 }
 
 public sealed class FolderNode(string path, string displayName)
@@ -246,5 +312,6 @@ public sealed class PhotoTile
     public PhotoTile(PhotoRecord photo) => Photo = photo;
 
     public PhotoRecord Photo { get; }
+    public bool IsVideo => Photo.MediaKind == MediaKind.Video;
     public string DisplayName => Path.GetFileName(Photo.Path);
 }

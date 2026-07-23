@@ -34,6 +34,7 @@ public sealed class VirtualizingPhotoTimeline : Control
     private static readonly IBrush TitleBrush = new SolidColorBrush(Color.Parse("#26333A"));
     private static readonly IBrush MutedBrush = new SolidColorBrush(Color.Parse("#738287"));
     private static readonly IBrush TileBrush = new SolidColorBrush(Color.Parse("#DEE6E7"));
+    private static readonly IBrush VideoBadgeBrush = new SolidColorBrush(Color.Parse("#167397"));
     private static readonly Typeface TextTypeface = new("Segoe UI");
 
     public static readonly StyledProperty<IList<DateGroup>?> ItemsSourceProperty =
@@ -145,7 +146,7 @@ public sealed class VirtualizingPhotoTimeline : Control
             TextTypeface, 19, TitleBrush);
         context.DrawText(title, new Point(SidePadding, layout.Top));
 
-        var count = new FormattedText($"{layout.Group.Photos.Count:n0} photos", CultureInfo.CurrentCulture,
+        var count = new FormattedText($"{layout.Group.Photos.Count:n0} items", CultureInfo.CurrentCulture,
             FlowDirection.LeftToRight, TextTypeface, 12, MutedBrush);
         context.DrawText(count, new Point(SidePadding, layout.Top + 25));
 
@@ -186,6 +187,15 @@ public sealed class VirtualizingPhotoTimeline : Control
                 var source = CoverSourceRect(bitmap.Size, imageBounds.Size);
                 context.DrawImage(bitmap, source, imageBounds);
             }
+        }
+
+        if (tile.IsVideo)
+        {
+            var badge = new Rect(x + 7, y + 7, 50, 22);
+            context.DrawRectangle(VideoBadgeBrush, null, badge, 3, 3);
+            var video = new FormattedText("PLAY", CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
+                TextTypeface, 10, Brushes.White);
+            context.DrawText(video, new Point(badge.X + 9, badge.Y + 5));
         }
 
         var filename = Shorten(Path.GetFileName(tile.Photo.Path), MaximumLabelLength);
